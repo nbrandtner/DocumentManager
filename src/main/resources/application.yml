@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:paperless}}
+    username: ${SPRING_DATASOURCE_USERNAME:${POSTGRES_USER:paperless}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${POSTGRES_PASSWORD:paperless}}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.format_sql: true
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+server:
+  port: ${SERVER_PORT:${APP_PORT:8080}}
