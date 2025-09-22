@@ -161,7 +161,7 @@ git push origin main
 git checkout main
 git pull origin main
 git merge --squash feature/<short-name>
-git commit -m "feat(<scope>): <summary> (#<issue/PR>)"
+git commit -m "squash merge feature/<short-name>"
 git push origin main
 ```
 
