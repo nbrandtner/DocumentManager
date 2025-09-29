@@ -4,6 +4,7 @@ import at.technikum.documentmanager.dto.CreateDocumentRequest;
 import at.technikum.documentmanager.dto.DocumentResponse;
 import at.technikum.documentmanager.service.DocumentService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +13,10 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/documents")
+@RequiredArgsConstructor
 public class DocumentController {
+
     private final DocumentService service;
-    public DocumentController(DocumentService service){ this.service = service; }
 
     @PostMapping
     public ResponseEntity<DocumentResponse> create(@Valid @RequestBody CreateDocumentRequest r) {
@@ -23,10 +25,15 @@ public class DocumentController {
     }
 
     @GetMapping("/{id}")
-    public DocumentResponse get(@PathVariable UUID id){ return DocumentResponse.of(service.get(id)); }
+    public DocumentResponse get(@PathVariable UUID id) {
+        return DocumentResponse.of(service.get(id));
+    }
 
     @GetMapping
-    public List<DocumentResponse> list(){
-        return service.list().stream().map(DocumentResponse::of).collect(Collectors.toList());
+    public List<DocumentResponse> list() {
+        return service.list()
+                .stream()
+                .map(DocumentResponse::of)
+                .collect(Collectors.toList());
     }
 }
