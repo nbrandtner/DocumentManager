@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import at.technikum.documentmanager.dto.CreateDocumentRequest;
 import at.technikum.documentmanager.entity.Document;
-import at.technikum.documentmanager.service.DocumentService;
+import at.technikum.documentmanager.service.DocumentServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -26,7 +26,7 @@ class DocumentControllerTest {
     @Autowired
     MockMvc mvc;
     @MockBean
-    DocumentService service;
+    DocumentServiceImpl service;
 
     @Test
     void createReturns201() throws Exception {

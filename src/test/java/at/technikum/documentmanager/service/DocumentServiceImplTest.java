@@ -17,11 +17,11 @@ import java.util.List;
 import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
-class DocumentServiceTest {
+class DocumentServiceImplTest {
     @Mock
     DocumentRepository repo;
     @InjectMocks
-    DocumentService service;
+    DocumentServiceImpl service;
 
     @Test
     void createsDocument() {
