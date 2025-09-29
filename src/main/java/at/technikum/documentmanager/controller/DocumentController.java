@@ -3,6 +3,7 @@ package at.technikum.documentmanager.controller;
 import at.technikum.documentmanager.dto.CreateDocumentRequest;
 import at.technikum.documentmanager.dto.DocumentResponse;
 import at.technikum.documentmanager.service.DocumentService;
+import at.technikum.documentmanager.service.DocumentServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
