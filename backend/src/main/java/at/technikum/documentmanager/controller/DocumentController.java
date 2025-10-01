@@ -30,6 +30,17 @@ public class DocumentController {
         return DocumentResponse.of(service.get(id));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public DocumentResponse update(@PathVariable UUID id, @Valid @RequestBody CreateDocumentRequest r) {
+        return DocumentResponse.of(service.update(id, r));
+    }
+
     @GetMapping
     public List<DocumentResponse> list() {
         return service.list()

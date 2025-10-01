@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   db:
     image: postgres:16
@@ -20,7 +22,7 @@ services:
 
   app:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: document-manager-app
     restart: unless-stopped
@@ -35,6 +37,29 @@ services:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS}
     ports:
       - "${APP_PORT}:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: document-manager-frontend
+    command: npm run build
+    volumes:
+      - ./frontend/dist:/app/dist
+
+  nginx:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+    container_name: document-manager-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+      - frontend
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
 
 volumes:
   db_data:
