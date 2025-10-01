@@ -1,9 +1,8 @@
 # Build stage
-FROM eclipse-temurin:21-jdk AS build
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY . .
-# If you use the Maven wrapper, ensure it's executable locally first (chmod +x mvnw)
-RUN ./mvnw -q -DskipTests package
+RUN mvn -q -DskipTests package
 
 # Runtime stage
 FROM eclipse-temurin:21-jre

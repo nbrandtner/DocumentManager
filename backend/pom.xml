@@ -79,8 +79,7 @@
             <artifactId>lombok</artifactId>
             <version>1.18.42</version> <!-- latest stable -->
             <scope>provided</scope>
-        </dependency>
-    </dependencies>
+        </dependency>    </dependencies>
 
     <build>
         <plugins>

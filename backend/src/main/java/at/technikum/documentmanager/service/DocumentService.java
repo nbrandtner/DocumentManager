@@ -9,4 +9,6 @@ public interface DocumentService {
     Document create(CreateDocumentRequest req);
     Document get(UUID id);
     List<Document> list();
+    void delete(UUID id);
+    Document update(UUID id, CreateDocumentRequest req);
 }

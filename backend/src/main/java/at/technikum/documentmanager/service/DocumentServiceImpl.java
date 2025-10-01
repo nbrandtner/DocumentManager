@@ -35,4 +35,21 @@ public class DocumentServiceImpl implements DocumentService {
     public List<Document> list() {
         return repo.findAll();
     }
+
+    @Override
+    public void delete(UUID id) {
+        repo.deleteById(id);
+    }
+
+    @Override
+    public Document update(UUID id, CreateDocumentRequest req) {
+        var existingDocument = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Document not found"));
+
+        existingDocument.setOriginalFilename(req.originalFilename());
+        existingDocument.setContentType(req.contentType());
+        existingDocument.setSize(req.size());
+
+        return repo.save(existingDocument);
+    }
 }

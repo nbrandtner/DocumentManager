@@ -1,32 +1,77 @@
 # Document Manager – Setup Guide
 
-This project is a **Java 21 / Spring Boot 3** REST service with PostgreSQL for persistence.  
-Sprint 1 delivers a minimal **Document** API with create/list/get endpoints.
+This project is a **Java 21 / Spring Boot 3** REST service with **PostgreSQL** persistence and a **React + Vite + Tailwind** frontend.  
+It can be run in **two modes**:
 
-## Run with Docker Compose
-
-Port `8080` (app) and `5432` (DB) must be free on your machine. Open Docker Desktop before starting.
-
-1. Build & start containers:
-
-   ```powershell
-   docker compose build
-   docker compose up
-   ```
-
-2. Containers started:
-
-    - **document-manager-app** → Spring Boot service on `http://localhost:8080`
-    - **paperless-db** → PostgreSQL on `localhost:5432`
-
-3. Stop the stack:
-
-   ```powershell
-   docker compose down
-   ```
+- **Development**: backend in Docker, frontend locally with Vite (hot reload + proxy).
+- **Production**: full stack in Docker Compose (frontend built and served by Nginx).
 
 ---
 
+## Prerequisites
+
+Make sure you have the following installed:
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Node.js](https://nodejs.org/) **20.19.0** (or via [NVM for Windows](https://github.com/coreybutler/nvm-windows))
+- [Git](https://git-scm.com/)
+
+---
+
+## Run – Development Mode (recommended while coding)
+
+1. Start only backend + database with Docker Compose:
+
+   ```powershell
+   docker compose up db app
+   ```
+   This starts:
+
+      - app → Spring Boot backend at http://localhost:8080
+
+      - db → PostgreSQL database at localhost:5432
+
+2. Install frontend dependencies (first time only):
+   ```powershell
+      cd frontend
+      npm install
+   ```
+3. Start Vite dev server (with proxy to backend):
+   ```powershell
+      npm run dev
+   ```
+   Open browser → http://localhost:5173
+   API calls to /api/... are proxied to backend at http://localhost:8080.
+
+4. Stop backend stack:
+    ```powershell
+       docker compose down
+    ```
+---
+## Run – Production Mode (full Docker stack)
+This runs frontend + backend + DB + Nginx together in Docker.
+1. Build and start all services:
+   ```powershell
+   docker compose up --build -d
+   ```
+   Running containers:
+
+      - document-manager-app → Spring Boot backend (http://localhost:8080)
+
+      - paperless-db → PostgreSQL (localhost:5432)
+
+      - document-manager-frontend → frontend build stage
+
+      - document-manager-nginx → serves frontend + proxies /api to backend (http://localhost)
+
+2. Open in browser:
+   http://localhost
+
+3. Stop stack:
+    ```powershell
+       docker compose down
+    ```
+---
 ## API Endpoints
 
 ### Create a document
