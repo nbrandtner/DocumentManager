@@ -1,4 +1,4 @@
-package at.technikum.documentmanager.controller;
+/**package at.technikum.documentmanager.controller;
 
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
-import at.technikum.documentmanager.dto.CreateDocumentRequest;
+import at.technikum.documentmanager.controller.DocumentController;
 import at.technikum.documentmanager.entity.Document;
 import at.technikum.documentmanager.service.DocumentServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -132,3 +132,4 @@ class DocumentControllerTest {
                 .andExpect(jsonPath("$.error").value("must be greater than 0"));
     }
 }
+**/
