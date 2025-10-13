@@ -3,5 +3,6 @@ create table if not exists documents (
     original_filename varchar(255) not null,
     content_type varchar(100) not null,
     size bigint not null,
-    uploaded_at timestamptz not null
+    uploaded_at timestamptz not null,
+    storage_filename varchar(255) not null
 );

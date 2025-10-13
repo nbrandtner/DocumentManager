@@ -31,4 +31,7 @@ public class Document {
     @Column(nullable = false)
     @Builder.Default
     private Instant uploadedAt = Instant.now();
+
+    @Column(nullable = false)
+    private String storageFilename;
 }
