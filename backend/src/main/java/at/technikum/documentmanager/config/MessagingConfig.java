@@ -21,17 +21,8 @@ import java.util.Map;
 @EnableRabbit
 public class MessagingConfig {
 
-    @Value("${app.mq.exchange}") private String exchangeName;
-    @Value("${app.mq.routing}") private String routingKey;
-    @Value("${app.mq.queue}") private String queueName;
-
-    @Value("${app.mq.dlx:docs.dlx}") private String dlxName;
-    @Value("${app.mq.dlq:docs.uploaded.dlq}") private String dlqName;
-
-    @Bean
-    public MessageConverter jacksonMessageConverter(ObjectMapper mapper) {
-        return new Jackson2JsonMessageConverter(mapper);
-    }
+    @Value("${app.mq.exchange}")
+    private String exchangeName;
 
     @Bean
     public TopicExchange exchange() {
@@ -39,31 +30,8 @@ public class MessagingConfig {
     }
 
     @Bean
-    public Queue queue() {
-        Map<String, Object> args = new HashMap<>();
-        args.put("x-dead-letter-exchange", dlxName);
-        args.put("x-dead-letter-routing-key", routingKey + ".dlq");
-        return new Queue(queueName, true, false, false, args);
-    }
-
-    @Bean
-    public Binding binding() {
-        return BindingBuilder.bind(queue()).to(exchange()).with(routingKey);
-    }
-
-    @Bean
-    public TopicExchange dlx() {
-        return new TopicExchange(dlxName, true, false);
-    }
-
-    @Bean
-    public Queue dlq() {
-        return new Queue(dlqName, true);
-    }
-
-    @Bean
-    public Binding dlBinding() {
-        return BindingBuilder.bind(dlq()).to(dlx()).with(routingKey + ".dlq");
+    public MessageConverter jacksonMessageConverter(ObjectMapper mapper) {
+        return new Jackson2JsonMessageConverter(mapper);
     }
 
     @Bean
@@ -73,3 +41,4 @@ public class MessagingConfig {
         return tpl;
     }
 }
+

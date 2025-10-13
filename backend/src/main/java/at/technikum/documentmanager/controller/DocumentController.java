@@ -1,6 +1,5 @@
 package at.technikum.documentmanager.controller;
 
-import at.technikum.documentmanager.dto.CreateDocumentRequest;
 import at.technikum.documentmanager.dto.DocumentResponse;
 import at.technikum.documentmanager.messaging.UploadEventPublisher;
 import at.technikum.documentmanager.messaging.dto.UploadEvent;
@@ -43,10 +42,27 @@ public class DocumentController {
     private final UploadEventPublisher publisher;
 
     @PostMapping("/upload")
-    public ResponseEntity<Document> upload(@RequestParam("file") MultipartFile file) throws IOException {
+    public ResponseEntity<Document> upload(@RequestParam("file") MultipartFile file, Principal principal) throws IOException {
+        // Save the file and persist the document entity
         Document doc = service.saveFile(file);
+
+        // Build and publish the upload event for RabbitMQ
+        publisher.publish(new UploadEvent(
+                doc.getId().toString(),
+                doc.getOriginalFilename(),
+                doc.getContentType(),
+                file.getSize(),
+                Instant.now(),
+                principal != null ? principal.getName() : "unknown"
+        ));
+
+        log.info("Uploaded document: {} ({} bytes) published to MQ", doc.getOriginalFilename(), file.getSize());
+
+        // Return created document
         return ResponseEntity.status(HttpStatus.CREATED).body(doc);
     }
+
+
 
     @GetMapping("/{id}")
     public Document get(@PathVariable UUID id) {
