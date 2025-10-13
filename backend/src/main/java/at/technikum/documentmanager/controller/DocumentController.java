@@ -1,10 +1,15 @@
 package at.technikum.documentmanager.controller;
 
 import at.technikum.documentmanager.dto.DocumentResponse;
+import at.technikum.documentmanager.messaging.UploadEventPublisher;
+import at.technikum.documentmanager.messaging.dto.UploadEvent;
 import at.technikum.documentmanager.service.DocumentService;
+import at.technikum.documentmanager.service.DocumentServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import at.technikum.documentmanager.entity.Document;
@@ -16,6 +21,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import java.security.Principal;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
@@ -26,20 +35,34 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
+@Slf4j
 public class DocumentController {
 
     private final DocumentService service;
+    private final UploadEventPublisher publisher;
 
     @PostMapping("/upload")
-    public ResponseEntity<Document> upload(@RequestParam("file") MultipartFile file) throws IOException {
+    public ResponseEntity<Document> upload(@RequestParam("file") MultipartFile file, Principal principal) throws IOException {
+        // Save the file and persist the document entity
         Document doc = service.saveFile(file);
+
+        // Build and publish the upload event for RabbitMQ
+        publisher.publish(new UploadEvent(
+                doc.getId().toString(),
+                doc.getOriginalFilename(),
+                doc.getContentType(),
+                file.getSize(),
+                Instant.now(),
+                principal != null ? principal.getName() : "unknown"
+        ));
+
+        log.info("Uploaded document: {} ({} bytes) published to MQ", doc.getOriginalFilename(), file.getSize());
+
+        // Return created document
         return ResponseEntity.status(HttpStatus.CREATED).body(doc);
     }
 
-    @GetMapping
-    public List<Document> list() {
-        return service.list();
-    }
+
 
     @GetMapping("/{id}")
     public Document get(@PathVariable UUID id) {
@@ -76,5 +99,13 @@ public class DocumentController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) throws IOException {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping
+    public List<DocumentResponse> list() {
+        return service.list()
+                .stream()
+                .map(DocumentResponse::of)
+                .collect(Collectors.toList());
     }
 }
