@@ -220,3 +220,20 @@ After merging, remove old branches to reduce clutter:
 git branch -d feature/<short-name>          # local delete
 git push origin --delete feature/<short-name>   # remote delete
 ```
+
+
+
+### Creating the RabbitMQ user:
+docker compose up -d rabbitmq
+
+docker compose exec rabbitmq rabbitmqctl add_user appuser "supersecret123" 2>$null `
+  ; if ($LASTEXITCODE -ne 0) { docker compose exec rabbitmq rabbitmqctl change_password appuser "supersecret123" }
+
+docker compose exec rabbitmq rabbitmqctl set_user_tags appuser administrator
+
+docker compose exec rabbitmq rabbitmqctl set_permissions -p / appuser ".*" ".*" ".*"
+
+# Then check if it worked:
+docker compose exec rabbitmq rabbitmqctl list_users
+
+docker compose exec rabbitmq rabbitmqctl list_permissions -p /

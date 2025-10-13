@@ -11,6 +11,11 @@ spring:
       hibernate.jdbc.time_zone: UTC
   flyway:
     enabled: true
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
   servlet:
     multipart:
@@ -20,3 +25,11 @@ spring:
 
 server:
   port: ${SERVER_PORT:${APP_PORT:8080}}
+
+app:
+  mq:
+    exchange: ${APP_MQ_EXCHANGE:docs.exchange}
+    routing: ${APP_MQ_ROUTING:document.uploaded}
+    queue: ${APP_MQ_QUEUE:docs.uploaded.q}
+    dlx: docs.dlx
+    dlq: docs.uploaded.dlq
