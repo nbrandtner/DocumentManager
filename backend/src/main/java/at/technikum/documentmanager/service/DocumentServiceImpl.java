@@ -2,20 +2,23 @@ package at.technikum.documentmanager.service;
 
 import at.technikum.documentmanager.entity.Document;
 import at.technikum.documentmanager.repository.DocumentRepository;
+import at.technikum.documentmanager.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository repo;
+    private final StorageService storageService;
 
     @Override
     public Document get(UUID id) {
@@ -31,8 +34,11 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     public void delete(UUID id) throws IOException {
         var doc = get(id);
-        Path path = Paths.get("/app/uploads").resolve(doc.getStorageFilename());
-        Files.deleteIfExists(path);
+        try {
+            storageService.delete(doc.getStorageFilename());
+        } catch (Exception e) {
+            throw new IOException("Failed to delete object from storage: " + e.getMessage(), e);
+        }
         repo.deleteById(id);
     }
 
@@ -48,39 +54,45 @@ public class DocumentServiceImpl implements DocumentService {
     public Document replaceFile(UUID id, MultipartFile file) throws IOException {
         var existing = get(id);
 
-        // delete old file
-        Path oldPath = Paths.get("/app/uploads").resolve(existing.getStorageFilename());
-        Files.deleteIfExists(oldPath);
+        // Delete old file from storage
+        try {
+            storageService.delete(existing.getStorageFilename());
+        } catch (Exception e) {
+            throw new IOException("Failed to delete old object from storage: " + e.getMessage(), e);
+        }
 
-        // save new file
-        String storageName = UUID.randomUUID() + "-" + file.getOriginalFilename();
-        Path uploadDir = Paths.get("/app/uploads");
-        Files.createDirectories(uploadDir);
-        Files.copy(file.getInputStream(), uploadDir.resolve(storageName), StandardCopyOption.REPLACE_EXISTING);
+        // Store new file
+        String objectName = UUID.randomUUID() + "-" + file.getOriginalFilename();
+        try {
+            storageService.store(file.getInputStream(), file.getSize(), file.getContentType(), objectName);
+        } catch (Exception e) {
+            throw new IOException("Failed to upload new file to storage: " + e.getMessage(), e);
+        }
 
-        // update metadata
+        // Update metadata
         existing.setOriginalFilename(file.getOriginalFilename());
         existing.setContentType(file.getContentType());
         existing.setSize(file.getSize());
-        existing.setStorageFilename(storageName);
+        existing.setStorageFilename(objectName);
 
         return repo.save(existing);
     }
 
     @Override
     public Document saveFile(MultipartFile file) throws IOException {
-        Path uploadDir = Paths.get("/app/uploads");
-        Files.createDirectories(uploadDir);
+        String objectName = UUID.randomUUID() + "-" + file.getOriginalFilename();
 
-        String storageName = UUID.randomUUID() + "-" + file.getOriginalFilename();
-        Path filePath = uploadDir.resolve(storageName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        try {
+            storageService.store(file.getInputStream(), file.getSize(), file.getContentType(), objectName);
+        } catch (Exception e) {
+            throw new IOException("Failed to upload file to storage: " + e.getMessage(), e);
+        }
 
         Document doc = Document.builder()
                 .originalFilename(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .size(file.getSize())
-                .storageFilename(storageName)
+                .storageFilename(objectName)
                 .uploadedAt(Instant.now())
                 .build();
 

@@ -33,3 +33,10 @@ app:
     queue: ${APP_MQ_QUEUE:docs.uploaded.q}
     dlx: docs.dlx
     dlq: docs.uploaded.dlq
+
+minio:
+  endpoint: http://minio:9000
+  access-key: paperless
+  secret-key: paperless
+  bucket: documentmanager
+

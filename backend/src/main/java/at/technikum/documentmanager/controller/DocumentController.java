@@ -1,10 +1,11 @@
 package at.technikum.documentmanager.controller;
 
 import at.technikum.documentmanager.dto.DocumentResponse;
+import at.technikum.documentmanager.entity.Document;
 import at.technikum.documentmanager.messaging.UploadEventPublisher;
 import at.technikum.documentmanager.messaging.dto.UploadEvent;
 import at.technikum.documentmanager.service.DocumentService;
-import at.technikum.documentmanager.service.DocumentServiceImpl;
+import at.technikum.documentmanager.storage.StorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,24 +13,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import at.technikum.documentmanager.entity.Document;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.server.ResponseStatusException;
 
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.UUID;
-import java.io.IOException;
-import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -40,13 +37,14 @@ public class DocumentController {
 
     private final DocumentService service;
     private final UploadEventPublisher publisher;
+    private final StorageService storageService;
 
     @PostMapping("/upload")
     public ResponseEntity<Document> upload(@RequestParam("file") MultipartFile file, Principal principal) throws IOException {
-        // Save the file and persist the document entity
+        // Save file to MinIO and persist metadata
         Document doc = service.saveFile(file);
 
-        // Build and publish the upload event for RabbitMQ
+        // Publish upload event (RabbitMQ or similar)
         publisher.publish(new UploadEvent(
                 doc.getId().toString(),
                 doc.getOriginalFilename(),
@@ -56,13 +54,9 @@ public class DocumentController {
                 principal != null ? principal.getName() : "unknown"
         ));
 
-        log.info("Uploaded document: {} ({} bytes) published to MQ", doc.getOriginalFilename(), file.getSize());
-
-        // Return created document
+        log.info("Uploaded document '{}' ({} bytes) and published event", doc.getOriginalFilename(), file.getSize());
         return ResponseEntity.status(HttpStatus.CREATED).body(doc);
     }
-
-
 
     @GetMapping("/{id}")
     public Document get(@PathVariable UUID id) {
@@ -70,17 +64,36 @@ public class DocumentController {
     }
 
     @GetMapping("/download/{id}")
-    public ResponseEntity<Resource> download(@PathVariable UUID id) throws IOException {
-        Document doc = service.get(id);
-        Path path = Paths.get("/app/uploads").resolve(doc.getStorageFilename());
-        Resource resource = new FileSystemResource(path);
+    public ResponseEntity<Resource> download(@PathVariable UUID id) {
+        try {
+            // Retrieve metadata via service
+            Document doc = service.get(id);
+            if (doc == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            }
 
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(doc.getContentType()))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + doc.getOriginalFilename() + "\"")
-                .body(resource);
+            // Load the file from MinIO
+            Optional<InputStream> in = storageService.load(doc.getStorageFilename());
+            if (in.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+            }
+
+            // Wrap stream into Spring resource
+            InputStreamResource resource = new InputStreamResource(in.get());
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(doc.getContentType()))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + doc.getOriginalFilename() + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            log.error("Download failed for document {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
+
+
 
     @PutMapping("/{id}/metadata")
     public Document updateMetadata(@PathVariable UUID id,
