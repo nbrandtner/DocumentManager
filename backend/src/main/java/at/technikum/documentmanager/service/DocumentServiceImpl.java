@@ -54,22 +54,21 @@ public class DocumentServiceImpl implements DocumentService {
     public Document replaceFile(UUID id, MultipartFile file) throws IOException {
         var existing = get(id);
 
-        // Delete old file from storage
         try {
             storageService.delete(existing.getStorageFilename());
         } catch (Exception e) {
             throw new IOException("Failed to delete old object from storage: " + e.getMessage(), e);
         }
 
-        // Store new file
-        String objectName = UUID.randomUUID() + "-" + file.getOriginalFilename();
+        String cleanedName = sanitizeFilename(file.getOriginalFilename());
+        String objectName = id + "-" + cleanedName;
+
         try {
             storageService.store(file.getInputStream(), file.getSize(), file.getContentType(), objectName);
         } catch (Exception e) {
             throw new IOException("Failed to upload new file to storage: " + e.getMessage(), e);
         }
 
-        // Update metadata
         existing.setOriginalFilename(file.getOriginalFilename());
         existing.setContentType(file.getContentType());
         existing.setSize(file.getSize());
@@ -78,9 +77,12 @@ public class DocumentServiceImpl implements DocumentService {
         return repo.save(existing);
     }
 
+
     @Override
     public Document saveFile(MultipartFile file) throws IOException {
-        String objectName = UUID.randomUUID() + "-" + file.getOriginalFilename();
+        UUID id = UUID.randomUUID(); // single UUID for both DB and storage
+        String cleanedName = sanitizeFilename(file.getOriginalFilename());
+        String objectName = id + "-" + cleanedName;
 
         try {
             storageService.store(file.getInputStream(), file.getSize(), file.getContentType(), objectName);
@@ -89,6 +91,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         Document doc = Document.builder()
+                .id(id)
                 .originalFilename(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .size(file.getSize())
@@ -98,4 +101,21 @@ public class DocumentServiceImpl implements DocumentService {
 
         return repo.save(doc);
     }
+
+    private String sanitizeFilename(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return "unnamed";
+        }
+
+        // Separate base name and extension
+        int dotIndex = originalFilename.lastIndexOf('.');
+        String namePart = (dotIndex > 0) ? originalFilename.substring(0, dotIndex) : originalFilename;
+        String extPart = (dotIndex > 0) ? originalFilename.substring(dotIndex) : "";
+
+        // Remove all unsafe characters and replace spaces with underscores
+        namePart = namePart.replaceAll("[^a-zA-Z0-9-_]", "_");
+
+        return namePart + extPart;
+    }
+
 }

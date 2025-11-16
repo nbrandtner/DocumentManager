@@ -4,6 +4,9 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:appuser}
     password: ${SPRING_RABBITMQ_PASSWORD:supersecret123}
+    listener:
+      simple:
+        auto-startup: false
 app:
   mq:
     queue: ${APP_MQ_QUEUE:docs.uploaded.q}
