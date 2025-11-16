@@ -27,6 +27,9 @@ channel.queue_declare(
         "x-dead-letter-routing-key": "document.uploaded.dlq"
     }
 )
+# Declare GenAI queue (for sending OCR results)
+channel.queue_declare(queue="genai-tasks", durable=True)
+
 
 print(f"Connected — waiting for messages in '{QUEUE_NAME}'")
 
@@ -50,6 +53,17 @@ def callback(ch, method, properties, body):
         upload_text(doc_id, text)
 
         print(f"OCR complete for {filename}")
+
+        # Send message to GenAI queue
+        channel.basic_publish(
+            exchange="",
+            routing_key="genai-tasks",
+            body=json.dumps({
+                "documentId": doc_id,
+                "text": text
+            })
+        )
+        print(f"Sent OCR result to GenAI worker for {filename}")
     except Exception as e:
         print(f"Error processing {filename}: {e}")
 

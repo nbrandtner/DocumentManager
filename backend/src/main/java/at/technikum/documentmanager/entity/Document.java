@@ -33,4 +33,7 @@ public class Document {
 
     @Column(nullable = false)
     private String storageFilename;
+
+    @Column(columnDefinition = "TEXT")
+    private String summary;
 }

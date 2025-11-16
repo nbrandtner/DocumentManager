@@ -102,6 +102,13 @@ public class DocumentServiceImpl implements DocumentService {
         return repo.save(doc);
     }
 
+    @Override
+    public void saveSummary(UUID docId, String summary) {
+        var doc = get(docId); // throws if not found
+        doc.setSummary(summary);
+        repo.save(doc);
+    }
+
     private String sanitizeFilename(String originalFilename) {
         if (originalFilename == null || originalFilename.isBlank()) {
             return "unnamed";

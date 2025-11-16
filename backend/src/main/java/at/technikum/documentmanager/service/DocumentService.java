@@ -13,4 +13,5 @@ public interface DocumentService {
     Document updateMetadata(UUID id, String newName, String newType);
     Document replaceFile(UUID id, MultipartFile file) throws IOException;
     Document saveFile(MultipartFile file) throws IOException;
+    void saveSummary(UUID docId, String summary);
 }

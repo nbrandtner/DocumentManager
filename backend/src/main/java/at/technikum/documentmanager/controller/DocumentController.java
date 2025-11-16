@@ -4,6 +4,7 @@ import at.technikum.documentmanager.dto.DocumentResponse;
 import at.technikum.documentmanager.entity.Document;
 import at.technikum.documentmanager.messaging.UploadEventPublisher;
 import at.technikum.documentmanager.messaging.dto.UploadEvent;
+import at.technikum.documentmanager.repository.DocumentRepository;
 import at.technikum.documentmanager.service.DocumentService;
 import at.technikum.documentmanager.storage.StorageService;
 import jakarta.validation.Valid;
@@ -38,6 +39,7 @@ public class DocumentController {
     private final DocumentService service;
     private final UploadEventPublisher publisher;
     private final StorageService storageService;
+    private final DocumentRepository documentRepository;
 
     @PostMapping("/upload")
     public ResponseEntity<Document> upload(@RequestParam("file") MultipartFile file, Principal principal) throws IOException {
@@ -93,7 +95,12 @@ public class DocumentController {
         }
     }
 
-
+    @GetMapping("/{id}/summary")
+    public ResponseEntity<String> getSummary(@PathVariable UUID id) {
+        return documentRepository.findById(id)
+                .map(doc -> ResponseEntity.ok(doc.getSummary()))
+                .orElse(ResponseEntity.notFound().build());
+    }
 
     @PutMapping("/{id}/metadata")
     public Document updateMetadata(@PathVariable UUID id,
