@@ -8,6 +8,7 @@ interface Document {
     contentType: string;
     size: number;
     uploadedAt: string;
+    summary?: string;
 }
 
 export default function App() {
@@ -258,9 +259,16 @@ export default function App() {
                         >
                             Download
                         </button>
-
+                        <div className="space-y-2">
+                            <div className="mt-4">
+                                <span className="font-medium text-neutral-300">Summary:</span>
+                                <p className="mt-1 p-3 bg-neutral-900 text-neutral-200 rounded border border-neutral-700 whitespace-pre-wrap">
+                                    {selectedDoc.summary ? selectedDoc.summary : "⏳ Summary not generated yet"}
+                                </p>
+                            </div>
+                        </div>
                     </aside>
-                )}
+                )}t
             </main>
         </div>
     );
