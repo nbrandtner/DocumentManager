@@ -2,20 +2,23 @@ package at.technikum.documentmanager.service;
 
 import at.technikum.documentmanager.entity.Document;
 import at.technikum.documentmanager.repository.DocumentRepository;
+import at.technikum.documentmanager.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository repo;
+    private final StorageService storageService;
 
     @Override
     public Document get(UUID id) {
@@ -31,8 +34,11 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     public void delete(UUID id) throws IOException {
         var doc = get(id);
-        Path path = Paths.get("/app/uploads").resolve(doc.getStorageFilename());
-        Files.deleteIfExists(path);
+        try {
+            storageService.delete(doc.getStorageFilename());
+        } catch (Exception e) {
+            throw new IOException("Failed to delete object from storage: " + e.getMessage(), e);
+        }
         repo.deleteById(id);
     }
 
@@ -48,42 +54,68 @@ public class DocumentServiceImpl implements DocumentService {
     public Document replaceFile(UUID id, MultipartFile file) throws IOException {
         var existing = get(id);
 
-        // delete old file
-        Path oldPath = Paths.get("/app/uploads").resolve(existing.getStorageFilename());
-        Files.deleteIfExists(oldPath);
+        try {
+            storageService.delete(existing.getStorageFilename());
+        } catch (Exception e) {
+            throw new IOException("Failed to delete old object from storage: " + e.getMessage(), e);
+        }
 
-        // save new file
-        String storageName = UUID.randomUUID() + "-" + file.getOriginalFilename();
-        Path uploadDir = Paths.get("/app/uploads");
-        Files.createDirectories(uploadDir);
-        Files.copy(file.getInputStream(), uploadDir.resolve(storageName), StandardCopyOption.REPLACE_EXISTING);
+        String cleanedName = sanitizeFilename(file.getOriginalFilename());
+        String objectName = id + "-" + cleanedName;
 
-        // update metadata
+        try {
+            storageService.store(file.getInputStream(), file.getSize(), file.getContentType(), objectName);
+        } catch (Exception e) {
+            throw new IOException("Failed to upload new file to storage: " + e.getMessage(), e);
+        }
+
         existing.setOriginalFilename(file.getOriginalFilename());
         existing.setContentType(file.getContentType());
         existing.setSize(file.getSize());
-        existing.setStorageFilename(storageName);
+        existing.setStorageFilename(objectName);
 
         return repo.save(existing);
     }
 
+
     @Override
     public Document saveFile(MultipartFile file) throws IOException {
-        Path uploadDir = Paths.get("/app/uploads");
-        Files.createDirectories(uploadDir);
+        UUID id = UUID.randomUUID(); // single UUID for both DB and storage
+        String cleanedName = sanitizeFilename(file.getOriginalFilename());
+        String objectName = id + "-" + cleanedName;
 
-        String storageName = UUID.randomUUID() + "-" + file.getOriginalFilename();
-        Path filePath = uploadDir.resolve(storageName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        try {
+            storageService.store(file.getInputStream(), file.getSize(), file.getContentType(), objectName);
+        } catch (Exception e) {
+            throw new IOException("Failed to upload file to storage: " + e.getMessage(), e);
+        }
 
         Document doc = Document.builder()
+                .id(id)
                 .originalFilename(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .size(file.getSize())
-                .storageFilename(storageName)
+                .storageFilename(objectName)
                 .uploadedAt(Instant.now())
                 .build();
 
         return repo.save(doc);
     }
+
+    private String sanitizeFilename(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return "unnamed";
+        }
+
+        // Separate base name and extension
+        int dotIndex = originalFilename.lastIndexOf('.');
+        String namePart = (dotIndex > 0) ? originalFilename.substring(0, dotIndex) : originalFilename;
+        String extPart = (dotIndex > 0) ? originalFilename.substring(dotIndex) : "";
+
+        // Remove all unsafe characters and replace spaces with underscores
+        namePart = namePart.replaceAll("[^a-zA-Z0-9-_]", "_");
+
+        return namePart + extPart;
+    }
+
 }

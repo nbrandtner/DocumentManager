@@ -80,6 +80,40 @@ export default function App() {
         }
     };
 
+    // Download file directly (streamed from backend)
+    const downloadDoc = async (id: string) => {
+        try {
+            const res = await fetch(`/api/documents/download/${id}`);
+            if (!res.ok) throw new Error("Download failed");
+
+            // Extract filename from Content-Disposition header
+            const disposition = res.headers.get("Content-Disposition");
+            const match = disposition && disposition.match(/filename="(.+)"/);
+            const filename = match ? match[1] : "document";
+
+            // Convert response to blob
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            // Trigger download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            toast.success(`Downloaded ${filename}`);
+        } catch (e) {
+            console.error(e);
+            toast.error(`Download failed: ${(e as Error).message}`);
+        }
+    };
+
+
+
     return (
         <div className="min-h-screen bg-neutral-900 text-gray-100 flex flex-col">
             {/* Toast notifications */}
@@ -218,12 +252,13 @@ export default function App() {
                             </p>
                         </div>
                         {/* Download */}
-                        <a
-                            href={`/api/documents/download/${selectedDoc.id}`}
+                        <button
+                            onClick={() => downloadDoc(selectedDoc.id)}
                             className="inline-block mt-4 px-3 py-1 bg-neutral-700 hover:bg-neutral-600 text-purple-400 rounded shadow"
                         >
                             Download
-                        </a>
+                        </button>
+
                     </aside>
                 )}
             </main>

@@ -36,6 +36,46 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9090"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9090:9090"   # Web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      /bin/sh -c "
+      set -e;
+      echo 'Waiting for MinIO to be ready...';
+      until mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} 2>/dev/null; do
+        sleep 2;
+      done;
+      echo 'MinIO ready, creating bucket if needed...';
+      mc mb -p local/${MINIO_BUCKET} || true;
+      echo 'Bucket ready: ${MINIO_BUCKET}';
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+
   app:
     build:
       context: ./backend
@@ -47,6 +87,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully  # ✅ important addition
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -58,27 +100,17 @@ services:
       APP_MQ_EXCHANGE: docs.exchange
       APP_MQ_ROUTING: document.uploaded
       APP_MQ_QUEUE: docs.uploaded.q
+      APP_MQ_DLX: docs.dlx
+      APP_MQ_DLQ: docs.uploaded.dlq
+      SPRING_RABBITMQ_DYNAMIC: "true"
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_PRESIGN_EXPIRYSECONDS: 600
     ports:
       - "${APP_PORT}:8080"
-    volumes:
-      - document_storage:/app/uploads
-
-  ocr-worker:
-    build:
-      context: ./ocr-worker
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: "5672"
-      SPRING_RABBITMQ_USERNAME: appuser
-      SPRING_RABBITMQ_PASSWORD: supersecret123
-      APP_MQ_EXCHANGE: docs.exchange
-      APP_MQ_ROUTING: document.uploaded
-      APP_MQ_QUEUE: docs.uploaded.q
 
   frontend:
     build:
@@ -103,7 +135,25 @@ services:
     volumes:
       - ./frontend/dist:/usr/share/nginx/html:ro
 
+  ocr-worker-py:
+    build:
+      context: ./ocr-worker-py
+    container_name: documentmanager-ocr-worker-py
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: appuser
+      SPRING_RABBITMQ_PASSWORD: supersecret123
+      APP_MQ_QUEUE: docs.uploaded.q
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: paperless
+      MINIO_SECRET_KEY: paperless
+      MINIO_BUCKET: documentmanager
+
 volumes:
   db_data:
-  document_storage:
   rabbitmq_data:
+  minio_data:
