@@ -65,6 +65,16 @@ public class MessagingConfig {
     }
 
     @Bean
+    public Queue genaiTasksQueue() {
+        return QueueBuilder.durable("genai-tasks").build();
+    }
+
+    @Bean
+    public Queue summaryResultsQueue() {
+        return QueueBuilder.durable("summary-results").build();
+    }
+
+    @Bean
     public Queue deadLetterQueue() {
         return new Queue(dlqName, true);
     }

@@ -10,7 +10,8 @@ public record DocumentResponse(
         String contentType,
         long size,
         String downloadUrl,
-        Instant uploadedAt
+        Instant uploadedAt,
+        String summary
 ) {
     // Basic mapping (used for list endpoints, no presigned URL)
     public static DocumentResponse of(Document d) {
@@ -20,7 +21,8 @@ public record DocumentResponse(
                 d.getContentType(),
                 d.getSize(),
                 null, // downloadUrl not included in list responses
-                d.getUploadedAt()
+                d.getUploadedAt(),
+                d.getSummary()
         );
     }
 
@@ -32,7 +34,8 @@ public record DocumentResponse(
                 d.getContentType(),
                 d.getSize(),
                 downloadUrl,
-                d.getUploadedAt()
+                d.getUploadedAt(),
+                d.getSummary()
         );
     }
 }

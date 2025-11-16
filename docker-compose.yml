@@ -88,7 +88,7 @@ services:
       rabbitmq:
         condition: service_healthy
       minio-init:
-        condition: service_completed_successfully  # ✅ important addition
+        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -152,6 +152,21 @@ services:
       MINIO_ACCESS_KEY: paperless
       MINIO_SECRET_KEY: paperless
       MINIO_BUCKET: documentmanager
+
+  genai-worker:
+    build:
+      context: ./genai-worker
+    container_name: genai-worker
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBIT_HOST: rabbitmq
+      RABBIT_QUEUE: genai-tasks
+      RABBIT_USER: appuser
+      RABBIT_PASS: supersecret123
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    restart: unless-stopped
 
 volumes:
   db_data:
