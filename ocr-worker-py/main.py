@@ -9,6 +9,7 @@ RABBIT_HOST = os.getenv("SPRING_RABBITMQ_HOST", "rabbitmq")
 RABBIT_USER = os.getenv("SPRING_RABBITMQ_USERNAME", "appuser")
 RABBIT_PASS = os.getenv("SPRING_RABBITMQ_PASSWORD", "supersecret123")
 QUEUE_NAME = os.getenv("APP_MQ_QUEUE", "docs.uploaded.q")
+INDEX_QUEUE = os.getenv("INDEX_QUEUE", "indexing-tasks")
 
 print(f"Connecting to RabbitMQ at {RABBIT_HOST} ...")
 
@@ -29,15 +30,20 @@ channel.queue_declare(
 )
 # Declare GenAI queue (for sending OCR results)
 channel.queue_declare(queue="genai-tasks", durable=True)
+# Declare Indexer queue (for sending OCR text to Elasticsearch indexer)
+channel.queue_declare(queue=INDEX_QUEUE, durable=True)
 
 
-print(f"Connected — waiting for messages in '{QUEUE_NAME}'")
+print(f"Connected - waiting for messages in '{QUEUE_NAME}'")
 
 # --- Message handler ---
 def callback(ch, method, properties, body):
     event = json.loads(body)
     doc_id = event["documentId"]
     filename = event["filename"]
+    content_type = event.get("contentType")
+    uploaded_at = event.get("uploadedAt")
+    size = event.get("size")
 
     print(f"Received: {filename} ({doc_id})")
 
@@ -64,6 +70,21 @@ def callback(ch, method, properties, body):
             })
         )
         print(f"Sent OCR result to GenAI worker for {filename}")
+
+        # Send message to Indexing worker (Elasticsearch)
+        channel.basic_publish(
+            exchange="",
+            routing_key=INDEX_QUEUE,
+            body=json.dumps({
+                "documentId": doc_id,
+                "filename": filename,
+                "contentType": content_type,
+                "size": size,
+                "uploadedAt": uploaded_at,
+                "text": text
+            })
+        )
+        print(f"Sent OCR text to indexing worker for {filename}")
     except Exception as e:
         print(f"Error processing {filename}: {e}")
 

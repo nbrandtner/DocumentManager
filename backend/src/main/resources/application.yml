@@ -41,3 +41,7 @@ minio:
   secret-key: paperless
   bucket: documentmanager
 
+elasticsearch:
+  url: ${ELASTICSEARCH_URL:http://localhost:9200}
+  index: ${ELASTICSEARCH_INDEX:documents}
+

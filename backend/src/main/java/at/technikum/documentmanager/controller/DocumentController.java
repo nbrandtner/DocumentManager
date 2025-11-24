@@ -2,10 +2,12 @@ package at.technikum.documentmanager.controller;
 
 import at.technikum.documentmanager.dto.DocumentResponse;
 import at.technikum.documentmanager.entity.Document;
+import at.technikum.documentmanager.entity.Tag;
 import at.technikum.documentmanager.messaging.UploadEventPublisher;
 import at.technikum.documentmanager.messaging.dto.UploadEvent;
 import at.technikum.documentmanager.repository.DocumentRepository;
 import at.technikum.documentmanager.service.DocumentService;
+import at.technikum.documentmanager.service.TagService;
 import at.technikum.documentmanager.storage.StorageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class DocumentController {
     private final UploadEventPublisher publisher;
     private final StorageService storageService;
     private final DocumentRepository documentRepository;
+    private final TagService tagService;
 
     @PostMapping("/upload")
     public ResponseEntity<Document> upload(@RequestParam("file") MultipartFile file, Principal principal) throws IOException {
@@ -127,5 +130,20 @@ public class DocumentController {
                 .stream()
                 .map(DocumentResponse::of)
                 .collect(Collectors.toList());
+    }
+
+    @PostMapping("/{id}/tags/{tagId}")
+    public DocumentResponse addTag(@PathVariable UUID id, @PathVariable UUID tagId) {
+        return DocumentResponse.of(tagService.addTagToDocument(id, tagId));
+    }
+
+    @DeleteMapping("/{id}/tags/{tagId}")
+    public DocumentResponse removeTag(@PathVariable UUID id, @PathVariable UUID tagId) {
+        return DocumentResponse.of(tagService.removeTagFromDocument(id, tagId));
+    }
+
+    @GetMapping("/{id}/tags")
+    public List<Tag> tags(@PathVariable UUID id) {
+        return tagService.tagsForDocument(id);
     }
 }
