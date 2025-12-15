@@ -2,6 +2,7 @@ package at.technikum.documentmanager.dto;
 
 import at.technikum.documentmanager.entity.Document;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public record DocumentResponse(
@@ -11,7 +12,8 @@ public record DocumentResponse(
         long size,
         String downloadUrl,
         Instant uploadedAt,
-        String summary
+        String summary,
+        List<TagResponse> tags
 ) {
     // Basic mapping (used for list endpoints, no presigned URL)
     public static DocumentResponse of(Document d) {
@@ -22,7 +24,8 @@ public record DocumentResponse(
                 d.getSize(),
                 null, // downloadUrl not included in list responses
                 d.getUploadedAt(),
-                d.getSummary()
+                d.getSummary(),
+                d.getTags().stream().map(TagResponse::of).toList()
         );
     }
 
@@ -35,7 +38,8 @@ public record DocumentResponse(
                 d.getSize(),
                 downloadUrl,
                 d.getUploadedAt(),
-                d.getSummary()
+                d.getSummary(),
+                d.getTags().stream().map(TagResponse::of).toList()
         );
     }
 }
