@@ -4,18 +4,19 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.util.ObjectBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.function.Function;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
 class SearchServiceTest {
@@ -35,8 +36,12 @@ class SearchServiceTest {
         source.setText("full body text");
 
         SearchResponse<IndexedDocument> response = SearchResponse.of(r -> r
+                .took(1)
+                .timedOut(false)
+                .shards(s -> s.total(1).successful(1).failed(0))
                 .hits(h -> h.hits(List.of(
                         Hit.of(hit -> hit
+                                .index("documents")
                                 .id(source.getDocumentId())
                                 .score(1.2)
                                 .source(source)
@@ -46,14 +51,14 @@ class SearchServiceTest {
         );
 
         when(client.search(
-                ArgumentMatchers.<SearchRequest>any(),
-                ArgumentMatchers.<Class<IndexedDocument>>eq(IndexedDocument.class)))
-                .thenReturn(response);
+                ArgumentMatchers.<Function<SearchRequest.Builder, ObjectBuilder<SearchRequest>>>any(),
+                eq(IndexedDocument.class)
+        )).thenReturn(response);
 
         var results = service.search("body");
         assertEquals(1, results.size());
-        assertEquals("body text", results.get(0).snippet());
-        assertEquals(source.getFilename(), results.get(0).filename());
-        assertEquals(source.getContentType(), results.get(0).contentType());
+        assertEquals("body text", results.getFirst().snippet());
+        assertEquals(source.getFilename(), results.getFirst().filename());
+        assertEquals(source.getContentType(), results.getFirst().contentType());
     }
 }

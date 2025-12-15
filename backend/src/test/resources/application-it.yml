@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/paperless
+    username: paperless
+    password: paperless
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: appuser
+    password: supersecret123
+
+minio:
+  endpoint: "http://localhost:9000"
+  bucket: "documentmanager"
